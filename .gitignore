@@ -1,0 +1,20 @@
+# Virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment variables / secrets
+.env
+
+# Output / generated data
+reddit_posts_with_comments.json
+movie_digest.json
+documents.json
+documents_store.json
+reddit.index
+
+# Playwright
+.playwright/
