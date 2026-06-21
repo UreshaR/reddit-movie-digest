@@ -1,47 +1,45 @@
 # Reddit Movie Digest (r/movies, last 2 days)
 
-## Setup
-```bash
-pip install -r requirements.txt
-export GROQ_API_KEY="your_groq_key_here"   # get one at console.groq.com/keys
-```
-**Note:** the key that was hardcoded in the old `grok_client.py` is exposed in
-your uploaded zip. Rotate/revoke it at console.groq.com/keys, then use the
-new key as above.
+Scrapes r/movies for posts + comments from the last 2 days, then uses an
+LLM (Groq) to identify the film name and a short description for each post.
 
-## What changed vs your original code
-- Replaced the Playwright browser scraper with Reddit's public JSON API
-  (`reddit_collector.py`). No login, no flaky DOM scraping, and it gives you
-  an exact `created_utc` timestamp per post so the "last 2 days" filter is
-  exact (not approximate via scrolling/guessing).
-- `summarize_movies.py` is the new main script — it's what you asked for:
-  for every post from the last 48 hours, it asks the LLM for the film name
-  + a short description, using the post + its top comments as context.
-- `grok_client.py` -> `llm_client.py`: switched to Groq (matches your `gsk_`
-  key), reads the key from an environment variable instead of being
-  hardcoded in source.
-- `ask_reddit.py` (optional semantic Q&A over embeddings) kept as a bonus,
-  also switched to Groq.
+## Setup
+
+```powershell
+pip install -r requirements.txt
+python -m playwright install chromium
+```
+
+Create a `.env` file in the project root (not committed to git):
+```dotenv
+GROQ_API_KEY=your_groq_key_here
+```
+Get a key at https://console.groq.com/keys.
 
 ## Run order
-```bash
-# 1. Collect last 2 days of posts + comments from r/movies
-python3 reddit_collector.py
-# -> reddit_posts_with_comments.json
 
-# 2. Get film name + description per post (the main deliverable)
-python3 summarize_movies.py
-# -> movie_digest.json + printed list
-
-# --- Optional: semantic search over comments ---
-python3 clean_data.py            # -> documents.json
-python3 create_embeddings.py     # -> documents_store.json
-python3 build_faiss_index.py     # -> reddit.index
-python3 ask_reddit.py            # interactive Q&A
+```powershell
+python webscrapping.py        # scrapes last 2 days -> reddit_posts_with_comments.json
+python summarize_movies.py    # film name + description -> movie_digest.json
 ```
 
+That's it — those two scripts are the entire core pipeline.
+
+## Optional (not required)
+- `reddit_collector.py` — an alternate scraper using Reddit's public JSON
+  API instead of Playwright. Currently blocked by Reddit (403), kept here
+  only as a reference/fallback if that changes.
+- `clean_data.py`, `create_embeddings.py`, `build_faiss_index.py`,
+  `ask_reddit.py` — builds a semantic search index over the scraped
+  comments so you can ask free-form questions (e.g. "what are people
+  saying about Scooby-Doo?"). Not needed for the film digest output.
+
 ## Adjusting
-- Change subreddit or window: edit `SUBREDDIT` / `HOURS_WINDOW` at the top
-  of `reddit_collector.py`.
+- Change subreddit or time window: edit `SUBREDDIT_URL` / `HOURS_WINDOW`
+  at the top of `webscrapping.py`.
 - Change LLM model: edit `MODEL` in `llm_client.py` (any Groq-hosted model,
-  e.g. `llama-3.3-70b-versatile`, `mixtral-8x7b-32768`).
+  e.g. `llama-3.3-70b-versatile`).
+
+## Security note
+Never commit your `.env` file or hardcode API keys in source. `.gitignore`
+already excludes `.env`, `venv/`, and generated JSON output files.
