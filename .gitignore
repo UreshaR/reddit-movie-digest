@@ -18,3 +18,4 @@ reddit.index
 
 # Playwright
 .playwright/
+.env
